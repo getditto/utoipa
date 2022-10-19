@@ -785,10 +785,41 @@ impl ToTokens for ComplexEnum<'_> {
                         }
                     })
                     .collect();
+
                 // for now just use tag as a discriminator
-                let discriminator = tag.map(|tag| {
+                let discriminator: _ = tag.map(|tag| {
+                    let mut discriminator = quote! {
+                        utoipa::openapi::DiscriminatorBuilder::new()
+                            .property_name(#tag)
+                    };
+
+                    self.variants.iter().for_each(|variant: &Variant| {
+                            if let Some(attrs) = attr::parse_schema_attr::<
+                                SchemaAttr<UnnamedFieldStruct>,
+                            >(&variant.attrs)
+                            {
+                                if let Some(mapping) = &attrs.as_ref().mapping {
+                                    if let Fields::Unnamed(FieldsUnnamed { unnamed, .. }) =
+                                        &variant.fields
+                                    {
+                                        if let Some(field) = unnamed.first() {
+                                            let type_tree = TypeTree::from_type(&field.ty);
+
+                                            if let Some(path) = type_tree.path {
+                                                let segment = path.segments.first().unwrap();
+                                                let ident = &segment.ident;
+                                                let path = format!("#/components/schemas/{ident}");
+                                                discriminator
+                                                    .extend(quote! { .mapping(#mapping, #path) });
+                                            };
+                                        }
+                                    }
+                                }
+                            }
+                        });
+
                     quote! {
-                        .discriminator(Some(utoipa::openapi::schema::Discriminator::new(#tag)))
+                        .discriminator(Some(#discriminator.into()))
                     }
                 });
 
