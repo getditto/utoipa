@@ -89,6 +89,7 @@ pub struct UnnamedFieldStruct<'c> {
     format: Option<SchemaFormat<'c>>,
     default: Option<AnyValue>,
     example: Option<AnyValue>,
+    pub(super) mapping: Option<String>,
 }
 
 impl IsInline for UnnamedFieldStruct<'_> {
@@ -260,6 +261,9 @@ impl<'c> Parse for SchemaAttr<UnnamedFieldStruct<'c>> {
                 "title" => {
                     parse_utils::parse_next_literal_str(input)?; // Handled by SchemaAttr<Title>
                 }
+                "mapping" => {
+                    unnamed_struct.mapping = Some(parse_utils::parse_next_literal_str(input)?);
+                }
                 "default" => {
                     unnamed_struct.default = Some(parse_utils::parse_next(input, || {
                         AnyValue::parse_any(input)
@@ -389,7 +393,7 @@ impl<'c> Parse for SchemaAttr<NamedField<'c>> {
                     field.value_type = Some(parse_utils::parse_next(input, || {
                         input.parse::<syn::Type>()
                     })?);
-                },
+                }
                 "nullable" => field.nullable = Some(parse_utils::parse_bool_or_true(input)?),
                 _ => return Err(Error::new(ident.span(), EXPECTED_ATTRIBUTE_MESSAGE)),
             }
@@ -477,6 +481,12 @@ impl ToTokens for UnnamedFieldStruct<'_> {
         if let Some(ref format) = self.format {
             tokens.extend(quote! {
                 .format(Some(#format))
+            })
+        }
+
+        if let Some(ref mapping) = self.mapping {
+            tokens.extend(quote! {
+                .format(Some(#mapping))
             })
         }
     }
