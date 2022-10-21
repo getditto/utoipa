@@ -310,6 +310,7 @@ pub mod serde {
         pub rename: Option<String>,
         pub default: Option<bool>,
         pub flatten: Option<bool>,
+        pub skip_serializing_if: Option<bool>,
     }
 
     impl SerdeValue {
@@ -321,6 +322,9 @@ pub mod serde {
                 while let Some((tt, next)) = rest.token_tree() {
                     match tt {
                         TokenTree::Ident(ident) if ident == "skip" => value.skip = Some(true),
+                        TokenTree::Ident(ident) if ident == "skip_serializing_if" => {
+                            value.skip_serializing_if = Some(true)
+                        }
                         TokenTree::Ident(ident) if ident == "flatten" => value.flatten = Some(true),
                         TokenTree::Ident(ident) if ident == "rename" => {
                             if let Some((literal, _)) = parse_next_lit_str(next) {

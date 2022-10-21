@@ -271,7 +271,10 @@ impl ToTokens for NamedStructSchema<'_> {
                     .property(#name, #schema_property)
                 });
 
-                if !schema_property.is_option() && !is_default(&container_rules, &field_rule) {
+                if !schema_property.is_option()
+                    && !is_default(&container_rules, &field_rule)
+                    && !is_skip_serializing_if(&field_rule)
+                {
                     object_tokens.extend(quote! {
                         .required(#name)
                     })
@@ -346,6 +349,14 @@ fn is_default(container_rules: &Option<SerdeContainer>, field_rule: &Option<Serd
             .as_ref()
             .and_then(|rule| rule.default.as_ref())
             .unwrap_or(&false)
+}
+
+#[inline]
+fn is_skip_serializing_if(field_rule: &Option<SerdeValue>) -> bool {
+    field_rule
+        .as_ref()
+        .map(|rule| rule.skip_serializing_if.is_some())
+        .unwrap_or(false)
 }
 
 #[cfg_attr(feature = "debug", derive(Debug))]

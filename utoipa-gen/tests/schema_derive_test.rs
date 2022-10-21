@@ -1871,6 +1871,10 @@ fn derive_struct_with_uuid_type() {
 #[test]
 fn derive_parse_serde_field_attributes() {
     struct S;
+    fn is_zero(i: &u64) -> bool {
+        *i == 0
+    }
+
     let post = api_doc! {
         #[derive(Serialize)]
         #[serde(rename_all = "camelCase")]
@@ -1879,6 +1883,8 @@ fn derive_parse_serde_field_attributes() {
             id: String,
             #[serde(skip)]
             _p: PhantomData<S>,
+            #[serde(skip_serializing_if = "is_zero")]
+            i: u64,
             long_field_num: i64,
         }
     };
