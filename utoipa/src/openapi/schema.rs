@@ -1490,7 +1490,7 @@ mod tests {
     #[test]
     fn discriminator_create() {
         let builder = DiscriminatorBuilder::new();
-        builder.property_name("method").mapping("key".into(), "value".into());
+        builder.property_name("method").mapping::<&str>("key", "value");
 
     }
 }
