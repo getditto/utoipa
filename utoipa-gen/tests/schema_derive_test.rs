@@ -1025,6 +1025,87 @@ fn derive_complex_enum() {
 }
 
 #[test]
+fn derive_complex_enum_with_mapping() {
+    #[derive(Serialize)]
+    struct CreateResult {
+        id: String,
+    }
+
+    #[derive(Serialize)]
+    struct DeleteResult {
+        deleted: u64,
+    }
+
+    let value: Value = api_doc! {
+        #[derive(Serialize)]
+        #[serde(tag = "method")]
+        enum MyResult {
+            #[schema(mapping = "create")]
+            Create(CreateResult),
+            #[schema(mapping = "delete")]
+            Delete(DeleteResult)
+        }
+    };
+
+    assert_json_eq!(
+        value,
+        json!({
+            "discriminator": {
+                "propertyName": "method",
+                "mapping": {
+                    "create": "#/components/schemas/CreateResult",
+                    "delete": "#/components/schemas/DeleteResult"
+                }
+            },
+            "oneOf": [
+                {
+                    "allOf": [
+                        {
+                            "$ref": "#/components/schemas/CreateResult",
+                        },
+                        {
+                            "properties": {
+                                "method": {
+                                    "enum": [
+                                        "Create",
+                                    ],
+                                    "type": "string",
+                                },
+                            },
+                            "required": [
+                                "method",
+                            ],
+                            "type": "object",
+                        },
+                    ],
+                },
+                 {
+                    "allOf":  [
+                         {
+                            "$ref": "#/components/schemas/DeleteResult",
+                        },
+                         {
+                            "properties": {
+                                "method": {
+                                    "enum": [
+                                        "Delete",
+                                    ],
+                                    "type": "string",
+                                },
+                            },
+                            "required": [
+                                "method",
+                            ],
+                            "type": "object",
+                        },
+                    ],
+                },
+            ]
+        })
+    );
+}
+
+#[test]
 fn derive_complex_enum_title() {
     #[derive(Serialize)]
     struct Foo(String);
@@ -1280,6 +1361,58 @@ fn derive_complex_enum_serde_tag() {
             "discriminator": {
                 "propertyName": "tag"
             }
+        })
+    );
+}
+
+#[test]
+fn derive_serde_flatten() {
+    #[derive(Serialize)]
+    struct Record {
+        amount: i64,
+        description: String,
+    }
+
+    #[derive(Serialize)]
+    struct Pagination {
+        page: i64,
+        next_page: i64,
+        per_page: i64,
+    }
+
+    let value: Value = api_doc! {
+        #[derive(Serialize)]
+        struct NamedFields {
+            id: &'static str,
+            #[serde(flatten)]
+            record: Record,
+            #[serde(flatten)]
+            pagination: Pagination
+        }
+    };
+
+    assert_json_eq!(
+        value,
+        json!({
+            "allOf": [
+                {
+                    "$ref": "#/components/schemas/Record"
+                },
+                {
+                    "$ref": "#/components/schemas/Pagination"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string",
+                        },
+                    },
+                    "required": [
+                        "id",
+                    ],
+                },
+            ]
         })
     );
 }
@@ -1738,6 +1871,10 @@ fn derive_struct_with_uuid_type() {
 #[test]
 fn derive_parse_serde_field_attributes() {
     struct S;
+    fn is_zero(i: &u64) -> bool {
+        *i == 0
+    }
+
     let post = api_doc! {
         #[derive(Serialize)]
         #[serde(rename_all = "camelCase")]
@@ -1746,6 +1883,8 @@ fn derive_parse_serde_field_attributes() {
             id: String,
             #[serde(skip)]
             _p: PhantomData<S>,
+            #[serde(skip_serializing_if = "is_zero")]
+            i: u64,
             long_field_num: i64,
         }
     };
