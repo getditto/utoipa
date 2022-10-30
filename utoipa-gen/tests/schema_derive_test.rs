@@ -1025,6 +1025,87 @@ fn derive_complex_enum() {
 }
 
 #[test]
+fn derive_complex_enum_with_mapping() {
+    #[derive(Serialize)]
+    struct CreateResult {
+        id: String,
+    }
+
+    #[derive(Serialize)]
+    struct DeleteResult {
+        deleted: u64,
+    }
+
+    let value: Value = api_doc! {
+        #[derive(Serialize)]
+        #[serde(tag = "method")]
+        enum MyResult {
+            #[schema(mapping = "create")]
+            Create(CreateResult),
+            #[schema(mapping = "delete")]
+            Delete(DeleteResult)
+        }
+    };
+
+    assert_json_eq!(
+        value,
+        json!({
+            "discriminator": {
+                "propertyName": "method",
+                "mapping": {
+                    "create": "#/components/schemas/CreateResult",
+                    "delete": "#/components/schemas/DeleteResult"
+                }
+            },
+            "oneOf": [
+                {
+                    "allOf": [
+                        {
+                            "$ref": "#/components/schemas/CreateResult",
+                        },
+                        {
+                            "properties": {
+                                "method": {
+                                    "enum": [
+                                        "Create",
+                                    ],
+                                    "type": "string",
+                                },
+                            },
+                            "required": [
+                                "method",
+                            ],
+                            "type": "object",
+                        },
+                    ],
+                },
+                 {
+                    "allOf":  [
+                         {
+                            "$ref": "#/components/schemas/DeleteResult",
+                        },
+                         {
+                            "properties": {
+                                "method": {
+                                    "enum": [
+                                        "Delete",
+                                    ],
+                                    "type": "string",
+                                },
+                            },
+                            "required": [
+                                "method",
+                            ],
+                            "type": "object",
+                        },
+                    ],
+                },
+            ]
+        })
+    );
+}
+
+#[test]
 fn derive_complex_enum_title() {
     #[derive(Serialize)]
     struct Foo(String);

@@ -253,6 +253,8 @@ pub struct Discriminator {
     /// Defines a discriminator property name which must be found within all composite
     /// objects.
     pub property_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mapping: Option<BTreeMap<String, String>>
 }
 
 impl Discriminator {
@@ -265,12 +267,44 @@ impl Discriminator {
     /// # use utoipa::openapi::schema::Discriminator;
     /// let discriminator = Discriminator::new("pet_type");
     /// ```
-    pub fn new<I: Into<String>>(property_name: I) -> Self {
+    pub fn new<I: Into<String>>(property_name: I, mapping: Option<BTreeMap<String, String>>) -> Self {
         Self {
             property_name: property_name.into(),
+            mapping 
         }
     }
 }
+
+#[derive(Default)]
+pub struct DiscriminatorBuilder {
+    pub property_name: String,
+    pub mapping: Option<BTreeMap<String, String>>
+}
+
+impl DiscriminatorBuilder {
+    new!(pub DiscriminatorBuilder);
+
+    pub fn property_name<I: Into<String>>(mut self, property_name: I) -> Self {
+        set_value!(self property_name property_name.into())
+    }
+
+    pub fn mapping<I: Into<String>>(mut self, key: I, value: I) -> Self {
+        if let Some(mapping) = self.mapping.as_mut() {
+            mapping.insert(key.into(), value.into());
+        } else {
+            let mut mapping = BTreeMap::new();
+            mapping.insert(key.into(), value.into());
+            self.mapping = Some(mapping);
+        }
+
+        self
+    }
+
+    build_fn!(pub Discriminator property_name, mapping);
+}
+
+from!(Discriminator DiscriminatorBuilder property_name, mapping);
+
 
 /// OneOf [Composite Object][oneof] component holds
 /// multiple components together where API endpoint could return any of them.
@@ -1451,5 +1485,12 @@ mod tests {
             serialized_components,
             serde_json::to_string(&deserialized_components).unwrap()
         )
+    }
+
+    #[test]
+    fn discriminator_create() {
+        let builder = DiscriminatorBuilder::new();
+        builder.property_name("method").mapping::<&str>("key", "value");
+
     }
 }
